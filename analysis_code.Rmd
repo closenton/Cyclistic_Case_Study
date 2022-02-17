@@ -1,0 +1,417 @@
+---
+title: "analysis_code"
+author: "Curran Osenton"
+date: "2/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### 1. Load Packages and data set
+
+```{r load packages, eval=FALSE}
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(lubridate)
+library(viridis)
+library(forcats)
+library(mapview)
+library(sf)
+
+full_year_cleaned_rmd <- read.csv("/Users/CLO/Documents/Data/Case Study 1/Process/full_year_cleaned.csv")
+```
+
+#### 2. Find and graph the most popular bike stations
+
+```{r popular stations, eval=FALSE}
+# create a data frame summarizing the most popular stations using latitude and longitude
+
+popular_stations_all <- full_year_cleaned_rmd %>% 
+  group_by(
+    start_lat,
+    start_lng) %>%
+  summarise(
+    total_trips = n()) %>%
+  arrange(
+    desc(
+      total_trips)) %>% 
+  head(
+    10)
+
+# create a map of the summarized data
+
+mapview(popular_stations_all, 
+        xcol = "start_lng", 
+        ycol = "start_lat", 
+        zcol = "total_trips", 
+        cex = "total_trips", 
+        burst = FALSE, 
+        crs = 4269, 
+        grid = FALSE)
+```
+
+#### 3. Find and graph most popular bike stations among Cyclistic members
+
+```{r popular member stations, eval=FALSE}
+# create a data frame summarizing most popular bike stations for member trips only
+
+popular_stations_member_rmd <- full_year_cleaned_rmd %>% 
+  filter(
+    member_casual == "member") %>% 
+  group_by(
+    start_lat,
+    start_lng) %>%
+  summarise(
+    total_trips = n()) %>%
+  arrange(
+    desc(
+      total_trips)) %>% 
+  head(
+    10)
+
+# create a map showing the most popular member stations
+
+mapview(
+  popular_stations_member_rmd, 
+  xcol = "start_lng", 
+  ycol = "start_lat", 
+  zcol = "total_trips", 
+  cex = "total_trips", 
+  burst = FALSE, 
+  crs = 4269, 
+  grid = FALSE)
+```
+
+#### 4. Compare member and casual customer trips at the 5 most popular bike stations in residential areas
+
+```{r member vs casual bike trips at top 5 residential bike stations, eval=FALSE}
+# create data frame with bike trips for members and casual customers
+# include data for 5 most popular residential bike stations
+
+member_casual_habits_top5_residential_rmd <- full_year_cleaned_rmd %>% 
+  filter(
+    start_station_name == "Clark St & Elm St" | 
+      start_station_name == "Wells St & Concord Ln" | 
+      start_station_name == "Kingsbury St & Kinzie St" | 
+      start_station_name == "Wells St & Elm St" | 
+      start_station_name == "Dearborn St & Erie St") %>% 
+  group_by(
+    start_station_name) %>% 
+  summarise(
+    total_trips_members = sum(
+      member_casual == "member"),
+    total_trips_casual = sum(
+      member_casual == "casual"))
+
+# transform from wide to long data
+
+member_casual_habits_top5_residential_long_rmd <- member_casual_habits_top5_residential_rmd %>% 
+  gather(
+    trips, total, 
+    total_trips_members:total_trips_casual) %>% 
+  arrange(
+    desc(
+      trips))
+
+# plot data
+
+ggplot(
+  member_casual_habits_top5_residential_long_rmd, 
+  aes(
+    start_station_name, 
+    total, 
+    fill=trips)
+  ) +
+  geom_bar(
+    stat = "identity", 
+    position = "dodge", 
+    width = 0.75) +
+  theme_minimal() +
+  theme(
+    axis.text.x=element_text(
+      angle=35, 
+      hjust=1),
+    axis.title.x=element_blank(),
+    legend.title = element_blank()
+    ) +
+  scale_fill_manual(
+    values = c(
+      "#4B0082",
+      "#29c79d"),
+    labels = c(
+      "Casual Customer",
+      "Member")
+    ) +
+  labs(
+    title = "Bike trips taken from the top 5 residential stations", 
+    y = "Total Trips") +
+  geom_text (
+    aes(
+      label = scales::comma(total)),
+    position = position_dodge(width = 1),
+    vjust = -0.25, 
+    size = 2) +
+  scale_y_continuous(
+    labels = scales::unit_format(
+      unit = "k", 
+      scale = 1e-3,
+      accuracy =1L))
+```
+
+#### 5. Find number of member bike trips by time of day
+
+```{r member trips during the day, eval=FALSE}
+# create data frame with bike trip times for members
+
+popular_times_member_rmd <- full_year_cleaned_rmd %>% 
+  select(member_casual, time) %>% 
+  filter(member_casual == "member")
+```
+
+When executing code within the R console, I was able to change time from character type to time type using Lubridate's hms function. This function did not work in R Markdown so I opted instead to use as.POSIXct. When applying this function to a column with only a time as variable, as.POSIXct automatically adds today's date. This solution worked but each new day I ran the code, I would have to manually change the date in the subsequent case_when function that groups the times into different time frames (early morning rush hour, late morning, etc). This was problematic and inefficient.
+
+In order to resolve the problem, I added a column for date (and chose the most recent date used) and then combined the date and time columns. This way the date can remain static. Since we're only interested in time of day, the date is irrelevant for the purposes of this portion of the analysis.
+
+```{r create date column, eval=FALSE}
+# create column with same dates
+
+popular_times_member_rmd <- popular_times_member_rmd %>% 
+  mutate(date = as.Date("2022-02-06", "%Y-%m-%d"))
+```
+
+```{r combine date and time, eval=FALSE}
+# new column with date and time combined
+
+popular_times_member_rmd <- popular_times_member_rmd %>% 
+  mutate(new_time = as.POSIXct(paste(date, time), format="%Y-%m-%d %H:%M:%S"))
+```
+
+```{r assign time frames, eval=FALSE}
+# assign a time frame to each bike trip
+
+popular_times_member_rmd <- popular_times_member_rmd %>% 
+  mutate(time_of_day = case_when(
+    new_time >= '2022-02-06 07:00:00' & 
+    new_time < '2022-02-06 10:00:00' ~ "7am - 10am",
+    new_time >= '2022-02-06 10:00:00' & 
+    new_time < '2022-02-06 12:00:00' ~ "10am - 12pm",
+    new_time >= '2022-02-06 12:00:00' & 
+    new_time < '2022-02-06 15:30:00' ~ "12pm - 3:30pm",
+    new_time >= '2022-02-06 15:30:00' & 
+    new_time < '2022-02-06 19:00:00' ~ "3:30pm - 7pm",
+    new_time >= '2022-02-06 19:00:00' & 
+    new_time < '2022-02-06 22:00:00' ~ "7pm - 10pm",
+    new_time >= '2022-02-06 22:00:00' & 
+    new_time <= '2022-02-06 23:59:59' ~ "10pm - 1am",
+    new_time >= '2022-02-06 00:00:00' & 
+    new_time < '2022-02-06 01:00:00' ~ "10pm - 1am",
+    new_time >= '2022-02-06 01:00:00' & 
+    new_time < '2022-02-06 04:00:00' ~ "1am - 4am",
+    new_time >= '2022-02-06 04:00:00' &
+    new_time < '2022-02-06 07:00:00' ~ "4am - 7am",
+    TRUE                   ~ "other"
+    ))
+```
+
+
+```{r total trips, eval=FALSE}
+# get total trips for each time of day
+
+popular_times_member_rmd <- popular_times_member_rmd %>% 
+  filter(
+    member_casual == "member") %>% 
+  group_by(
+    time_of_day) %>% 
+  summarize(
+    total_trips = n())
+```
+
+```{r bar plot, eval=FALSE}
+# bar plot with number of trips and time of day
+
+popular_times_member_graph_rmd <- ggplot(
+  popular_times_member_rmd, 
+  aes(
+    x = time_of_day, 
+    y = total_trips,
+    fill = total_trips)) +
+  geom_bar(
+    stat="identity",
+  ) +
+  scale_fill_gradient(
+    labels = scales::unit_format(
+      unit = "k", 
+      scale = 1e-3,
+      accuracy =1L),
+    name = "Total Trips"
+    ) +
+  theme_minimal() +
+  theme(
+    axis.title.x=element_blank(),
+    axis.title.y=element_blank(),
+    axis.text.x=element_text(
+      size = 8,
+      face = "bold"),
+    axis.text.y = element_blank()
+    ) +
+  scale_x_discrete(
+    limits = c(
+      "4am - 7am",
+      "7am - 10am",
+      "10am - 12pm", 
+      "12pm - 3:30pm", 
+      "3:30pm - 7pm", 
+      "7pm - 10pm", 
+      "10pm - 1am",
+      "1am - 4am"
+    )
+  )+
+  labs(title = "A 24 hour view of member bike trips") 
+```
+
+```{r circular graph, eval=FALSE}
+# make circular graph
+
+popular_times_member_graph_rmd <- popular_times_member_graph_rmd + 
+  coord_polar(
+    clip = "off")
+```
+
+```{r graph, eval=FALSE}
+print(popular_times_member_graph_rmd)
+```
+
+#### 6. Load 2019 data set
+
+
+```{r load data set, eval=FALSE}
+
+divvy_trips_2019_rmd <- read.csv("/Users/CLO/Documents/Data/Case Study 1/Process/divvy_trips_2019.csv")
+```
+
+#### 7. Find number of bike trips taken by male vs female at popular bike station Wells St and Concord Ln
+
+```{r summary of male vs female trips from wells, eval=FALSE}
+member_wells_2019_rmd <- divvy_trips_2019_rmd %>% 
+  filter(usertype == "Subscriber", 
+         from_station_name == "Wells St & Concord Ln",
+         !gender == "NA",
+         !gender == "") %>% 
+  group_by(
+    gender) %>% 
+  summarise(
+    total_trips = n()) 
+```
+
+```{r graph male vs female from wells station, eval=FALSE}
+# graph trips by gender
+
+popular_times_members_graph_rmd <- ggplot(
+  member_wells_2019_rmd, 
+  aes(
+    x = gender, 
+    y = total_trips, 
+    fill = gender)
+  ) + 
+  geom_col(
+    width = 0.5,
+    show.legend = FALSE
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 16),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(
+      size = 14),
+    axis.text.x = element_text(
+      size = 14),
+    axis.text.y = element_text(
+      size = 14
+    )
+  ) +
+  labs(
+    title = "Member Bike Trips From Wells St & Concord Ln",
+    y = "Total Trips"
+  ) +
+  scale_fill_viridis(
+    discrete = TRUE,
+    begin = 0,
+    end = .6
+  ) +
+  geom_text (
+    aes(
+      label = scales::comma(total_trips)), 
+    position = position_dodge(
+      width = 0.5),
+    vjust = 2, 
+    size = 6,
+    color = "white")
+```
+
+```{r print graph, eval=FALSE}
+print(popular_times_members_graph_rmd)
+```
+
+#### 8. Load census demographic data
+
+Please refer to the tidycensus_code Rmd file for a look at the code used to access US Census data. A CSV file was used for the code below.
+
+```{r census data, eval=FALSE}
+# load CSV file with data
+
+male_female_715_25_34_rmd <- read.csv("/Users/CLO/Documents/Data/Case Study 1/Process/male_female_715_25_34_combine.csv")
+```
+
+```{r plot of census data, eval=FALSE}
+# plot data
+
+ggplot(
+  male_female_715_25_34_rmd,
+  aes(
+    x= variable,
+    y = total,
+    fill = variable
+  )
+)+
+  geom_col(
+    width = 0.5,
+    show.legend = FALSE
+  ) +
+  theme_classic() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(
+      size = 14),
+    axis.text.x = element_text(
+      size = 14),
+    axis.text.y = element_text(
+      size = 14),
+    plot.title = element_text(
+      size=14,
+      face = "bold")
+  ) +
+  labs(
+    title = "25-34 y/o population for area around Wells St & Concord Ln",
+    y = "Total Population"
+  ) +
+  geom_text (
+    aes(
+      label = scales::comma(total)), 
+    position = position_dodge(
+      width = 0.5),
+    vjust = 2, 
+    size = 6,
+    color = "white"
+  ) +
+  scale_fill_viridis(
+    discrete = TRUE,
+    begin = 0,
+    end = .6)
+```
+

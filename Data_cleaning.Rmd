@@ -1,0 +1,187 @@
+---
+title: "Data_cleaning"
+author: "Curran Osenton"
+date: "2/10/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+```
+
+
+### Introduction
+
+This document outlines the data cleaning process for a case study of bike-sharing company Cyclistic. Two data sets were used in this case study. The first includes 12 CSV files with data collected from November 2020 through October 2021. The second data set includes four CSV files collected during each quarter of 2019.
+
+***
+*Please note that this case study was completed as part of the requirements for the Google Data Analytics Certificate. The company on which it is based is fictional.
+***
+
+### Data cleaning process for Cyclistic monthly files from 2020/2021
+
+```{r load packages}
+install.packages("readr")
+library(readr)
+install.packages("dplyr")
+library(dplyr)
+```
+
+```{r load files}
+oct_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202110-divvy-tripdata.csv")
+
+sep_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202109-divvy-tripdata.csv")
+
+aug_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202108-divvy-tripdata.csv")
+
+jul_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202107-divvy-tripdata.csv")
+
+jun_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202106-divvy-tripdata.csv")
+
+may_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202105-divvy-tripdata.csv")
+
+apr_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202104-divvy-tripdata.csv")
+
+mar_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202103-divvy-tripdata.csv")
+
+feb_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202102-divvy-tripdata.csv")
+
+jan_2021 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202101-divvy-tripdata.csv")
+
+dec_2020 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202012-divvy-tripdata.csv")
+
+nov_2020 <- read.csv("~/Documents/Data/Case Study 1/Monthly_Files/202011-divvy-tripdata.csv")
+```
+
+```{r combine data sets}
+# merge data sets
+
+full_year <- rbind(nov_2020, dec_2020, jan_2021, feb_2021, mar_2021, apr_2021, may_2021, jun_2021, jul_2021, aug_2021, sep_2021, oct_2021)
+```
+
+```{r duplicates}
+# get rid of duplicates
+
+full_year_cleaned <- distinct(full_year)
+```
+
+```{r change data type}
+#change data type for started_at and ended_at from chr to dttm
+
+full_year_cleaned$started_at <- as.POSIXct(
+  full_year_cleaned$started_at, 
+  format = "%Y-%m-%d %H:%M:%S"
+)
+
+full_year_cleaned$ended_at <- as.POSIXct(
+  full_year_cleaned$ended_at, 
+  format = "%Y-%m-%d %H:%M:%S"
+)
+```
+
+```{r trip duration column}
+# Add column for trip duration calculation
+
+full_year_cleaned <- mutate(full_year_cleaned, trip_duration = difftime(ended_at, started_at, units = "mins"))
+```
+
+```{r delete negative values}
+#Exclude trip_duration values less than 0
+
+full_year_cleaned <- subset(full_year_cleaned, trip_duration >0)
+```
+
+```{r add columns}
+# Add columns for year, month, day and time by extracting data from started_at column
+
+# Add column for year
+
+full_year_cleaned$year <- format(
+  full_year_cleaned$started_at, "%Y"
+  )
+
+# Add column for month
+
+full_year_cleaned$month <- format(
+  full_year_cleaned$started_at, "%m"
+)
+
+# Add column for day
+
+full_year_cleaned$day <- format(
+  full_year_cleaned$started_at, "%d"
+)
+
+# Add column for time
+
+full_year_cleaned$time <- format(
+  full_year_cleaned$started_at, "%H:%M:%S"
+)
+```
+
+```{r day of the week column}
+# Add column for day of the week
+
+full_year_cleaned <- mutate(full_year_cleaned, day_of_week = wday(started_at))
+```
+
+```{r save data set as CSV file}
+# Save the full_year_cleaned data set
+
+install.packages("data.table")
+library(data.table)
+
+fwrite(
+  full_year_cleaned, 
+  "/Users/CLO/Documents/Data/Case Study 1/Process/full_year_cleaned.csv", 
+  col.names = TRUE,
+  row.names = FALSE
+)
+```
+
+
+### Data cleaning process for Cyclistic quarterly files from 2019
+
+```{r load packages}
+install.packages("readr")
+library(readr)
+```
+
+```{r load files}
+#loading quarterly data
+
+Q1_2019 <- read.csv("~/Documents/Data/Case Study 1/Quarterly_Files/Divvy_Trips_2019_Q1.csv")
+Q2_2019 <- read.csv("~/Documents/Data/Case Study 1/Quarterly_Files/Divvy_Trips_2019_Q2.csv")
+Q3_2019 <- read.csv("~/Documents/Data/Case Study 1/Quarterly_Files/Divvy_Trips_2019_Q3.csv")
+Q4_2019 <- read.csv("~/Documents/Data/Case Study 1/Quarterly_Files/Divvy_Trips_2019_Q4.csv")
+
+```
+
+```{r change Q2_2019 colnames}
+# renamed Q2 column names so that column names across all four quarters would be consistent
+
+colnames(Q2_2019) <- c("trip_id", "start_time", "end_time", "bikeid", "tripduration", "from_station_id", "from_station_name", "to_station_id", "to_station_name", "usertype", "gender", "birthyear")
+
+```
+
+```{r combine data sets}
+# merging data sets
+
+divvy_trips_2019 <- rbind(Q1_2019, Q2_2019, Q3_2019, Q4_2019)
+```
+
+```{r duplicates}
+# getting rid of duplicates
+
+divvy_trips_2019 <- distinct(divvy_trips_2019)
+```
+
+```{r save as CSV file}
+fwrite(
+  divvy_trips_2019, 
+  "/Users/CLO/Documents/Data/Case Study 1/Process/divvy_trips_2019.csv", 
+  col.names = TRUE,
+  row.names = FALSE
+)
+```
+

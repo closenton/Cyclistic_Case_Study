@@ -1,0 +1,555 @@
+---
+title: "cyclistic_final_report"
+author: "Curran Osenton"
+date: "1/29/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+```
+
+
+
+```{r echo=FALSE}
+bytes <- file.size("cyclistic_final_report.Rmd")
+words <- bytes/10
+minutes <- words/200
+```
+
+Reading time: `r round(minutes)` minute(s) @ 200 WPM.
+
+
+
+### Increasing annual membership among Cyclistic users
+
+
+
+#### Introduction
+
+Since 2016, bike-sharing company Cyclistic has allowed Chicago visitors and locals alike to get around the city via bike. Cyclistic maintains a fleet of 5,824 bikes located at 692 bike stations throughout the metro area. When it comes to bike access, Cyclistic customers have two options: annual membership or purchasing single rides/day passes. 
+
+With Chicago's reputation as a bike-friendly city, it's no wonder Cyclistic’s popularity has grown steadily; the total number of bike trips increased 28% between 2019 and 2021. Most of this growth is due to an increasing number of single rides and day passes. Convinced that annual membership benefits both customer and company alike, Cyclistic wants to find ways to convince casual customers to become full-fledged members.  
+
+Using data collected in the year 2019 and from November 2020 through October 2021, the following analysis shows how Cyclistic can use certain insights in order to demonstrate the value of annual membership to their casual customers.
+
+The data used in this analysis was collected by Motivate International Inc., and has been made available under this [license](https://ride.divvybikes.com/data-license-agreement).  
+
+***
+
+*Please note, Cyclistic is a fictional company. This report was completed as part of the Google Data Analytics Certificate.
+
+***
+
+
+
+#### Process
+
+For the analysis of Cyclistic's customer data, a total of 16 CSV files were uploaded, cleaned and then analysed within RStudio. 
+
+The first four files contain quarterly information from the year 2019. Since the data from 2019 contain fields related to demographics, they were uploaded and cleaned separately from the more recent data files which contain no demographic information. 
+
+Once the files were read into RStudio, the cleaning process entailed the following steps:
+
+1. Renaming of Q2 columns in order to match column names in other data sets.
+2. Merging of data sets to create one data frame 
+3. Eliminating duplicates
+4. The final df was named : divvy_trips_2019
+
+The 12 remaining files contain data from November 2020 through October 2021. Once read into RStudio, the data was cleaned by taking the following steps:
+
+1. Merging all 12 data sets into one
+2. Eliminating duplicates
+3. Changing format of start_time and end_time columns from char to dttm
+4. Added a column for trip duration
+5. Excluded rows with negative values found in trip duration column
+6. Added columns for year, month and time by separating values from start_time column
+7. Added column for day of the week
+8. Saved the data set as full_year_cleaned
+
+Perhaps one of the most important insights gained during this process was the fact that certain trip duration values were negative. Multiple bike trips that began in November and December of 2020 had end times that preceded start times. The timing of these trips were quite similar so perhaps due to an equipment malfunction during this time frame. In order to ensure the integrity of the analysis, all rows containing negative trip durations were excluded.  
+
+For a more detailed look into data cleaning for this project, please refer to the “Data_cleaning.Rmd” file.
+
+
+
+#### Analysis
+
+The first step in the analysis process was to locate the most popular bike stations.  
+
+
+```{r load packages, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(lubridate)
+library(viridis)
+library(forcats)
+library(mapview)
+library(sf)
+```
+
+
+
+```{r load cleaned dataset, include=FALSE}
+full_year_cleaned_rmd <- read.csv("/Users/CLO/Documents/Data/Case Study 1/Process/full_year_cleaned.csv")
+```
+
+
+
+```{r popular stations, echo=FALSE, message=FALSE}
+popular_stations_all <- full_year_cleaned_rmd %>% 
+  group_by(
+    start_lat,
+    start_lng) %>%
+  summarise(
+    total_trips = n()) %>%
+  arrange(
+    desc(
+      total_trips)) %>% 
+  head(
+    10)
+
+mapview(popular_stations_all, 
+        xcol = "start_lng", 
+        ycol = "start_lat", 
+        zcol = "total_trips", 
+        cex = "total_trips", 
+        burst = FALSE, 
+        crs = 4269, 
+        grid = FALSE)
+```
+
+Chicago tourist sites saw the most bike activity over the course of the year. Cyclistic is without a doubt a popular choice among visitors looking to explore the city. Since tourists are unlikely to opt for annual membership, we wanted to find a way to exclude potential tourist data points. Since there is no distinction between tourists and locals who are both likely to purchase single rides and day passes, it can be difficult to isolate and analyze local casual customer habits. 
+
+A workaround for this challenge is to first understand member trends. After defining member trends, we can then:
+* find bike stations popular among the local casual customer base
+* gauge the degree of activity of the local casual customer base
+* determine benefits of annual membership 
+
+With these objectives in mind, we looked into the most popular stations used by Cyclistic members. 
+
+```{r popular member stations,echo=FALSE, message=FALSE}
+popular_stations_member_rmd <- full_year_cleaned_rmd %>% 
+  filter(
+    member_casual == "member") %>% 
+  group_by(
+    start_lat,
+    start_lng) %>%
+  summarise(
+    total_trips = n()) %>%
+  arrange(
+    desc(
+      total_trips)) %>% 
+  head(
+    10)
+
+mapview(
+  popular_stations_member_rmd, 
+  xcol = "start_lng", 
+  ycol = "start_lat", 
+  zcol = "total_trips", 
+  cex = "total_trips", 
+  burst = FALSE, 
+  crs = 4269, 
+  grid = FALSE)
+```
+
+
+Unlike the first map which showed bike activity around tourist hot-spots, this map features a large number of bike trips originating from residential areas of Chicago. There are also many member bike trips taking place around the University of Chicago campus. It's reasonable to conclude that these member bike trips most often start in these neighborhoods because this is likely where members live. 
+
+Now that we have located some popular stations in residential neighborhoods, we can use this information to compare casual customer activity in areas away from tourist sites. Since Chicago visitors are less likely to use bike stations in residential areas, there is a better chance that casual customers using these stations are locals and therefore potential candidates for annual membership. 
+
+
+```{r member vs casual bike trips at top 5 residential bike stations, echo=FALSE, message=FALSE}
+# create data frame with bike trips for members and casual customers
+# include data for 5 most popular residential bike stations
+
+member_casual_habits_top5_residential_rmd <- full_year_cleaned_rmd %>% 
+  filter(start_station_name == "Clark St & Elm St" | start_station_name == "Wells St & Concord Ln" | start_station_name == "Kingsbury St & Kinzie St" | start_station_name == "Wells St & Elm St" | start_station_name == "Dearborn St & Erie St") %>% 
+  group_by(start_station_name) %>% 
+  summarise(total_trips_members = sum(member_casual == "member"),
+            total_trips_casual = sum(member_casual == "casual"))
+
+# transform from wide to long data
+
+member_casual_habits_top5_residential_long_rmd <- member_casual_habits_top5_residential_rmd %>% 
+  gather(trips, total, total_trips_members:total_trips_casual) %>% 
+  arrange(desc(trips))
+
+# plot data
+
+ggplot(
+  member_casual_habits_top5_residential_long_rmd, 
+  aes(
+    start_station_name, 
+    total, 
+    fill=trips)
+  ) +
+  geom_bar(
+    stat = "identity", 
+    position = "dodge", 
+    width = 0.75) +
+  theme_minimal() +
+  theme(
+    axis.text.x=element_text(
+      angle=35, 
+      hjust=1),
+    axis.title.x=element_blank(),
+    legend.title = element_blank()
+    ) +
+  scale_fill_manual(
+    values = c(
+      "#4B0082",
+      "#29c79d"),
+    labels = c(
+      "Casual Customer",
+      "Member")
+    ) +
+  labs(
+    title = "Bike trips taken from the top 5 residential stations", 
+    y = "Total Trips") +
+  geom_text (
+    aes(
+      label = scales::comma(total)),
+    position = position_dodge(width = 1),
+    vjust = -0.25, 
+    size = 2) +
+  scale_y_continuous(
+    labels = scales::unit_format(
+      unit = "k", 
+      scale = 1e-3,
+      accuracy =1L))
+```
+
+Member bike trips outnumber casual customer bike trips at each of the five top residential stations. However, there are still over 72,000 casual customer bike trips being taken throughout the year from these five stations alone. 
+
+Another point to consider is the fact that these numbers refer to bike trips, not members. It could be that there are just as many casual customers as members, but that members take more frequent trips. If this is the case, then it's a good argument for casual customers to sign up for membership. If members do outnumber casual customers in these areas, there is still enough casual customer bike activity to suggest that Cyclistic can continue to grow its membership base. 
+
+Now that we've got a better idea of where potential casual customers are located, let's look into member habits that can show the value of annual subscription. For example, the most popular days of the week for member bike trips are mid-week, with Wednesday having the greatest number of bike trips taken by members. This suggests that members could be using this service for practical reasons like commuting. We can confirm this idea by looking at member bike trips by time of day.  
+
+```{r member trips during the day, echo=FALSE, message=FALSE}
+# create data frame with bike trip times for members
+
+popular_times_member_rmd <- full_year_cleaned_rmd %>% 
+  select(member_casual, time) %>% 
+  filter(member_casual == "member")
+```
+
+
+```{r create date column, echo=FALSE}
+# create column with same dates
+
+popular_times_member_rmd <- popular_times_member_rmd %>% 
+  mutate(date = as.Date("2022-02-06", "%Y-%m-%d"))
+```
+
+```{r combine date and time, echo=FALSE}
+# new column with date and time combined
+
+popular_times_member_rmd <- popular_times_member_rmd %>% 
+  mutate(new_time = as.POSIXct(paste(date, time), format="%Y-%m-%d %H:%M:%S"))
+```
+
+
+
+```{r assign time frames, echo=FALSE}
+# assign a time frame to each bike trip
+
+popular_times_member_rmd <- popular_times_member_rmd %>% 
+  mutate(time_of_day = case_when(
+    new_time >= '2022-02-06 07:00:00' & 
+    new_time < '2022-02-06 10:00:00' ~ "7am - 10am",
+    new_time >= '2022-02-06 10:00:00' & 
+    new_time < '2022-02-06 12:00:00' ~ "10am - 12pm",
+    new_time >= '2022-02-06 12:00:00' & 
+    new_time < '2022-02-06 15:30:00' ~ "12pm - 3:30pm",
+    new_time >= '2022-02-06 15:30:00' & 
+    new_time < '2022-02-06 19:00:00' ~ "3:30pm - 7pm",
+    new_time >= '2022-02-06 19:00:00' & 
+    new_time < '2022-02-06 22:00:00' ~ "7pm - 10pm",
+    new_time >= '2022-02-06 22:00:00' & 
+    new_time <= '2022-02-06 23:59:59' ~ "10pm - 1am",
+    new_time >= '2022-02-06 00:00:00' & 
+    new_time < '2022-02-06 01:00:00' ~ "10pm - 1am",
+    new_time >= '2022-02-06 01:00:00' & 
+    new_time < '2022-02-06 04:00:00' ~ "1am - 4am",
+    new_time >= '2022-02-06 04:00:00' &
+    new_time < '2022-02-06 07:00:00' ~ "4am - 7am",
+    TRUE                   ~ "other"
+    ))
+```
+
+
+
+```{r total trips, echo=FALSE, message=FALSE}
+# get total trips for each time of day
+
+popular_times_member_rmd <- popular_times_member_rmd %>% 
+  filter(member_casual == "member") %>% 
+  group_by(time_of_day) %>% 
+  summarize(total_trips = n())
+```
+
+
+
+```{r bar plot, echo=FALSE}
+# bar plot with number of trips and time of day
+
+popular_times_member_graph_rmd <- ggplot(
+  popular_times_member_rmd, 
+  aes(
+    x = time_of_day, 
+    y = total_trips,
+    fill = total_trips)) +
+  geom_bar(
+    stat="identity",
+  ) +
+  scale_fill_gradient(
+    labels = scales::unit_format(
+      unit = "k", 
+      scale = 1e-3,
+      accuracy =1L),
+    name = "Total Trips"
+    ) +
+  theme_minimal() +
+  theme(
+    axis.title.x=element_blank(),
+    axis.title.y=element_blank(),
+    axis.text.x=element_text(
+      size = 8,
+      face = "bold"),
+    axis.text.y = element_blank()
+    ) +
+  scale_x_discrete(
+    limits = c(
+      "4am - 7am",
+      "7am - 10am",
+      "10am - 12pm", 
+      "12pm - 3:30pm", 
+      "3:30pm - 7pm", 
+      "7pm - 10pm", 
+      "10pm - 1am",
+      "1am - 4am"
+    )
+  )+
+  labs(title = "A 24 hour view of member bike trips") 
+```
+
+
+```{r circular graph, echo=FALSE}
+# make circular graph
+
+popular_times_member_graph_rmd <- popular_times_member_graph_rmd + 
+  coord_polar(
+    clip = "off")
+```
+
+
+```{r graph, echo=FALSE}
+print(popular_times_member_graph_rmd)
+```
+
+It's clear that both evening and morning rush hour are indeed popular times, making Cyclistic a great choice for local professionals trying to get to and from work. Other popular riding times include the afternoon and early evening - and this is the case even when weekends are excluded from the analysis. 
+
+The uptick in afternoon bike trips is an intriguing trend that deserves more attention. Cyclistic riders could be going out for lunch, running mid-day errands or simply taking an active break to ward off the afternoon slump. Whether for leisure or more practical reasons, the popularity of the afternoon bike trip is an interesting trend that could help demonstrate the benefits of annual membership. The same can be said for the relatively high number of early evening/post-rush hour bike trips.
+
+For demographic insights, let's look at Cyclistic data collected in 2019. Unlike the data from 2020 and 2021, earlier data included information on age and sex of Cyclistic users. Here is a snapshot of age-related statistics from 2019 :
+
+* casual customer median age: 32 
+* member median age: 36
+* age range for casual customer bike trips originating from an active residential station : 22 - 31 
+* age range for member bike trips from the same station : 23 - 32
+
+Key age-related take away is that whether a member or casual customer, the most bike trips are taken by Gen Zers and Millennials.
+
+As for male/female stats :
+
+* total bike trips by male casual customers was 38% greater than total female casual customer bike trips 
+* total male member bike trips was 3 times more than female member bike trips
+
+This disparity between male and female bike trips was true even when looking at residential stations. Looking at bike activity from popular residential station Wells St. and Concord Ln., we see that there are almost twice as many male member bike trips as female bike trips.
+
+```{r load data set, echo=FALSE, message=FALSE}
+
+divvy_trips_2019_rmd <- read.csv("/Users/CLO/Documents/Data/Case Study 1/Process/divvy_trips_2019.csv")
+
+
+```
+
+```{r summary of male vs female trips from wells, echo=FALSE}
+member_wells_2019_rmd <- divvy_trips_2019_rmd %>% 
+  filter(usertype == "Subscriber", 
+         from_station_name == "Wells St & Concord Ln",
+         !gender == "NA",
+         !gender == "") %>% 
+  group_by(gender) %>% 
+  summarise(total_trips = n()) 
+```
+
+
+```{r graph male vs female from wells station, echo=FALSE}
+popular_times_members_graph_rmd <- ggplot(
+  member_wells_2019_rmd, 
+  aes(
+    x = gender, 
+    y = total_trips, 
+    fill = gender)
+  ) + 
+  geom_col(
+    width = 0.5,
+    show.legend = FALSE
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 16),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(
+      size = 14),
+    axis.text.x = element_text(
+      size = 14),
+    axis.text.y = element_text(
+      size = 14
+    )
+  ) +
+  labs(
+    title = "Member Bike Trips From Wells St & Concord Ln",
+    y = "Total Trips"
+  ) +
+  scale_fill_viridis(
+    discrete = TRUE,
+    begin = 0,
+    end = .6
+  ) +
+  geom_text (
+    aes(
+      label = scales::comma(total_trips)), 
+    position = position_dodge(
+      width = 0.5),
+    vjust = 2, 
+    size = 6,
+    color = "white")
+```
+
+
+```{r print graph, echo=FALSE}
+print(popular_times_members_graph_rmd)
+```
+
+Since these data points pertain to bike trips and not user activity, we cannot say male members necessarily outnumber female members. Much like the member vs casual customer scenario, it could be that male users don't outnumber female users, but that male cyclists simply take more bike trips. 
+
+Even though this data doesn't include the number of male/female users, we would still expect male/female bike trips to be at least somewhat proportional to local population demographics : especially since on a county and even more local levels, women outnumber men.
+
+Let's look at population numbers for a neighborhood with a popular bike station so that we can better gauge whether the demographic differences hold up on a hyper local level. 
+
+![2019 US Census, city of Chicago, Tract 715](/Users/CLO/Documents/Data/Case Study 1/Visualize/Screen Shot 2022-01-22 at 7.08.58 PM.png)
+
+According to the 2019 US census population numbers for this location, women make up a larger share of residents. And when accounting for the age range 25 to 34, there are 21% more women than men. 
+
+```{r census data, echo=FALSE, message=FALSE}
+# load CSV file with data
+
+male_female_715_25_34_rmd <- read.csv("/Users/CLO/Documents/Data/Case Study 1/Process/male_female_715_25_34_combine.csv")
+
+# plot data
+
+ggplot(
+  male_female_715_25_34_rmd,
+  aes(
+    x= variable,
+    y = total,
+    fill = variable
+  )
+)+
+  geom_col(
+    width = 0.5,
+    show.legend = FALSE
+  ) +
+  theme_classic() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(
+      size = 14),
+    axis.text.x = element_text(
+      size = 14),
+    axis.text.y = element_text(
+      size = 14),
+    plot.title = element_text(
+      size=14,
+      face = "bold")
+  ) +
+  labs(
+    title = "25-34 y/o population for area around Wells St & Concord Ln",
+    y = "Total Population"
+  ) +
+  geom_text (
+    aes(
+      label = scales::comma(total)), 
+    position = position_dodge(
+      width = 0.5),
+    vjust = 2, 
+    size = 6,
+    color = "white"
+  ) +
+  scale_fill_viridis(
+    discrete = TRUE,
+    begin = 0,
+    end = .6)
+```
+
+Even if there were an equal amount of male and female Cyclistic users, it is still difficult to explain such a discrepancy in overall bike trips given the population breakdown. Therefore it seems that there is a great potential for growth among Cyclistic users who identify as female.
+
+The insights gleaned from analyzing bike station activity, bike trip timing and user demographics have helped shape the social media campaign recommendations in the next section. 
+
+#### Recommendations
+
+The following recommendations use the insights gleaned from this analysis in order to craft social media campaigns aimed at converting casual Cyclistic customers into full-fledged members.
+
+__1. Cyclistic vignettes on film__  
+  *Create a series of videos that illustrate the benefits of being a Cyclistic         member. Each vignette will capture the unique routines of Cyclistic members as       they navigate Chicago. 
+  
+|  __Topics to highlight include :__
+
+  * savings: a former casual customer explains how they shifted to annual membership
+  when they realized how much they could save
+  
+  * healthier commute: Cyclistic members talk about their commute and perhaps how 
+  Cyclistic is helping them transition back to in-person work 
+  
+  * avoiding the afternoon slump : member explains how a bike ride in the afternoon 
+  helps stave off fatigue for in-person and remote workers alike. You can finish off   the day re-energized.
+  
+  * save on gym costs : hop on the bike before or after work for an inexpensive 
+  exercise routine
+
+|  __Setting/context details to feature :__
+
+  * filming locations should include spots well known to locals. Well-known tourist 
+  sites should be avoided in order to establish Cyclistic as a local brand
+  
+  * vignettes should feature Gen Z and younger millennials since this is a key casual     customer demographic
+
+|  __Social Media Platforms__
+
+  * Prioritize popular Gen Z and millenial social media platforms such as tiktok, 
+  instagram and youtube.
+  * Target social media users in residential areas of Chicago, Gen Z and millenials 
+  and users identifying as female
+
+
+__2. Email campaign__
+
+Send a promotional email to all members asking for referrals. Since the casual customers we hope to convert are in a very similar age group and live in the same areas of Chicago, there’s a good chance members and casual customers know each other. This recommendation also helps member retention. 
+
+
+__3. Targeted campaign for women__
+
+Use footage from the above vignettes to edit together Cyclistic scenes featuring female members. Distribute these videos on the same social platforms but target  users in residential Chicago areas who identify as female.
+
+
+
+
+
+

@@ -1,0 +1,120 @@
+---
+title: "tidycensus_code"
+author: "Curran Osenton"
+date: "2/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Introduction
+
+In order to gain a better understanding of Chicago demographics, data from the US Census was incorporated into the analysis of bike-sharing company Cyclistic. The R package tidycensus allows R users access to census data. 
+
+The following code chunks outline the steps taken to get Chicago-related data collected for the 2019 US Census.
+
+
+```{r load packages, eval=FALSE}
+library(tidycensus)
+library(tidyverse)
+```
+
+#### API Census Key
+
+In order to use the Census Data API, you first need to request a key [here](https://api.census.gov/data/key_signup.html). Once the key has been activated, you can set up your access by inputting the following code.
+
+
+```{r input api key, eval=FALSE}
+census_api_key("TypeYourKeyHere", overwrite = TRUE)
+```
+
+Now you're ready to pull data from the US Census using the incredible tidycensus package!
+
+#### Code for retrieving demographic information pertaining to tract 715 in the city of Chicago 
+
+The US Census divides each county into tracts. These tracts range from 1200 to 8000 inhabitants, with the average being around 4000. We picked Tract 715 in Cook County IL as an example because one of the more popular bike stations is within its bounds. We wanted to look at specific demographic information on a hyper local level to determine to what degree women might outnumber men. In general, there are more women than men in the city of Chicago, but we wanted to see whether that statistic held up in a bike-active neighborhood.
+
+The following represents the code used to pull all pertinent data related to our inquiry.
+
+```{r population tracts data frame, eval=FALSE}
+# get population tracts
+
+population_tracts <- get_acs(
+  geography = "tract",
+  state = "Illinois",
+  county = "Cook County",
+  table = "B01001",
+  year = 2019
+)
+```
+
+```{r tract 715 male female demographics, eval=FALSE}
+# get breakdown for tract 715 male versus female (wells and concord bike station)
+# the us census variables below represent 
+#total female and male population respectively
+male_female_715 <- population_tracts %>% 
+  filter(
+    NAME == "Census Tract 715, Cook County, Illinois") %>% 
+  summarise(
+    total_female = sum(
+      estimate[variable == "B01001_026"]), 
+            total_male = sum(
+              estimate[variable == "B01001_002"]))
+```
+
+```{r tract 715 age and sex information, eval=FALSE}
+# tract 715 males and females ages 25 to 34
+# the us census variables below represent 
+#total female and male populations for 25 to 29 years and 30 to 34 years 
+male_female_715_25_34 <- population_tracts %>% 
+  filter(
+    NAME == "Census Tract 715, Cook County, Illinois", 
+    variable == "B01001_035" | 
+      variable == "B01001_036" | 
+      variable == "B01001_011" | 
+      variable == "B01001_012") %>%   
+  group_by(
+    variable) %>% 
+  summarise(
+    total = sum(
+      estimate))
+```
+
+```{r age aggregating, eval=FALSE}
+# combine 25-29 age range with 30-34 age range 
+#to create larger age range of 25-34 for male and female
+
+male_female_715_25_34_combine <- male_female_715_25_34
+male_female_715_25_34_combine[1,1] <- "Male"
+male_female_715_25_34_combine[2,1] <- "Male"
+male_female_715_25_34_combine[3,1] <- "Female"
+male_female_715_25_34_combine[4,1] <- "Female"
+```
+
+```{r group by male and female for totals, eval=FALSE}
+male_female_715_25_34_combine <- male_female_715_25_34_combine %>% 
+  group_by(
+    variable) %>% 
+  summarise(
+    total = sum(
+      total))
+```
+
+#### Save data frame as CSV
+
+Once the data has been formatted in the appropriate way, we saved the data frame as a CSV file and used that in the final report. The only reason this code does not appear in the final report is because the census key would need to be included. We opted not to do that for security reasons.
+
+
+```{r write to CSV file, eval=FALSE}
+fwrite(
+  male_female_715_25_34_combine, 
+  "/Users/CLO/Documents/Data/Case Study 1/Process/male_female_715_25_34_combine.csv", 
+  col.names = TRUE,
+  row.names = FALSE
+)
+```
+
+
+
