@@ -222,13 +222,13 @@ pre code {
 library(tidyverse)</code></pre>
 </div>
 <div id="api-census-key" class="section level4">
-<h3>API Census Key</h3>
+<h4>1. API Census Key</h4>
 <p>In order to use the Census Data API, you first need to request a key <a href="https://api.census.gov/data/key_signup.html">here</a>. Once the key has been activated, you can set up your access by inputting the following code.</p>
 <pre class="r"><code>census_api_key(&quot;TypeYourKeyHere&quot;, overwrite = TRUE)</code></pre>
 <p>Now you&#39;re ready to pull data from the US Census using the incredible <a href="https://walker-data.com/tidycensus/">tidycensus package</a>!</p>
 </div>
 <div id="code-for-retrieving-demographic-information-pertaining-to-tract-715-in-the-city-of-chicago" class="section level4">
-<h3>Code for retrieving demographic information pertaining to tract 715 in the city of Chicago</h3>
+<h4>2. Code for retrieving demographic information pertaining to tract 715 in the city of Chicago</h4>
 <p>The US Census divides each county into tracts. These tracts range from 1200 to 8000 inhabitants, with the average being around 4000. We picked Tract 715 in Cook County IL as an example because one of the more popular bike stations is within its bounds. We wanted to look at specific demographic information on a hyper local level to determine to what degree women might outnumber men. In general, there are more women than men in the city of Chicago, but we wanted to see whether that statistic held up in a bike-active neighborhood.</p>
 <p>The following represents the code used to pull all pertinent data related to our inquiry.</p>
 <pre class="r"><code># get population tracts
@@ -282,7 +282,7 @@ male_female_715_25_34_combine[4,1] &lt;- &quot;Female&quot;</code></pre>
       total))</code></pre>
 </div>
 <div id="save-data-frame-as-csv" class="section level4">
-<h4>Save data frame as CSV</h4>
+<h4>3. Save data frame as CSV</h4>
 <p>Once the data has been formatted in the appropriate way, we saved the data frame as a CSV file and used that in the final report. The only reason this code does not appear in the final report is because the census key would need to be included. We opted not to do that for security reasons.</p>
 <pre class="r"><code>fwrite(
   male_female_715_25_34_combine,
