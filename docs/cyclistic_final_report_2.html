@@ -3,6 +3,8 @@
 <html>
 
 <head>
+  <title>Cyclistic Final Report</title>
+
   <!-- Header -->
   <div id="header-wrapper" class="wrapper">
     <div id="header">
@@ -84,6 +86,7 @@
 <link href="data:text/css,%0Atable%2Emapview%2Dpopup%20%7B%0Aoverflow%3A%20scroll%3B%0Awidth%3A%20auto%3B%0Aheight%3A%20auto%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0A%0Atable%2Emapview%2Dpopup%20tr%3Anth%2Dchild%28even%29%20%7B%0Abackground%3A%20%23D1E0FF%3B%0A%7D%0Atable%2Emapview%2Dpopup%20tr%3Anth%2Dchild%28odd%29%20%7B%0Abackground%3A%20%23ebf1ff%3B%0A%7D%0Atable%2Emapview%2Dpopup%2C%20th%2C%20td%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ffffff%3B%0A%7D%0A%0A%0A%2Eleaflet%2Dpopup%2Dcontent%20%7B%0Amargin%3A%201px%201px%201px%201px%3B%0Aline%2Dheight%3A%201%2E5%3B%0Aoverflow%2Dy%3A%20auto%3B%0Aoverflow%2Dx%3A%20scoll%3B%0A%7D%0A%2Eleaflet%2Dcontainer%20a%2Eleaflet%2Dpopup%2Dclose%2Dbutton%20%7B%0Aposition%3A%20absolute%3B%0Atop%3A%200%3B%0Aright%3A%20%2D20px%3B%0Apadding%3A%203px%200%200%200%3B%0Atext%2Dalign%3A%20center%3B%0Awidth%3A%2018px%3B%0Aheight%3A%2014px%3B%0Afont%3A%2016px%2F14px%20Tahoma%2C%20Verdana%2C%20sans%2Dserif%3B%0Afont%2Dweight%3A%20bold%3B%0Acolor%3A%20%23c3c3c3%3B%0Atext%2Ddecoration%3A%20none%3B%0Abackground%3A%20transparent%3B%0A%7D%0A%2Eleaflet%2Dcontainer%20a%2Eleaflet%2Dpopup%2Dclose%2Dbutton%3Ahover%20%7B%0Acolor%3A%20%23999%3B%0A%7D%0A%2Eleaflet%2Dpopup%2Dcontent%2Dwrapper%2C%20%2Eleaflet%2Dpopup%2Dtip%20%7B%0Apadding%3A%201px%3B%0A%2Dwebkit%2Dborder%2Dradius%3A%200%3B%0Aborder%2Dradius%3A%200%3B%0Abackground%3A%20%23ffffff%3B%20%0Abox%2Dshadow%3A%200%203px%2014px%20rgba%280%2C0%2C0%2C0%2E4%29%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%20%7B%0Awidth%3A%205px%3B%0Aheight%3A%205px%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%2Dbutton%20%7B%0Awidth%3A%200%3B%0Aheight%3A%200%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%2Dthumb%20%7B%0Abackground%3A%20%23666666%3B%0Aborder%3A%200%20none%20%23ffffff%3B%0Aborder%2Dradius%3A%200%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%2Dthumb%3Ahover%20%7B%0Abackground%3A%20%23333333%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%2Dthumb%3Aactive%20%7B%0Abackground%3A%20%23333333%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%2Dtrack%20%7B%0Abackground%3A%20%23e1e1e1%3B%0Aborder%3A%200%20none%20%23ffffff%3B%0Aborder%2Dradius%3A%2050px%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%2Dtrack%3Ahover%20%7B%0Abackground%3A%20%23e1e1e1%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%2Dtrack%3Aactive%20%7B%0Abackground%3A%20%23e1e1e1%3B%0A%7D%0Adiv%3A%3A%2Dwebkit%2Dscrollbar%2Dcorner%20%7B%0Abackground%3A%20transparent%3B%0A%7D%0A" rel="stylesheet" />
 <link href="data:text/css,%2Eleaflet%2Dcontrol%20br%20%7Bclear%3A%20both%3B%7D%0A" rel="stylesheet" />
 
+
 <style type="text/css">
   code{white-space: pre-wrap;}
   span.smallcaps{font-variant: small-caps;}
@@ -91,7 +94,7 @@
   div.column{display: inline-block; vertical-align: top; width: 50%;}
   div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
   ul.task-list{list-style: none;}
-    </style>
+</style>
 
 <style type="text/css">code{white-space: pre;}</style>
 <script type="text/javascript">
@@ -104,7 +107,13 @@ if (window.hljs) {
 }
 </script>
 
-
+<style type="text/css">
+.wrapper {
+  font-family: 'Source Sans Pro' !important;
+  font-size: 17.3px !important;
+  white-space: nowrap !important;
+}
+</style>
 
 
 
